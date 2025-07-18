@@ -144,13 +144,11 @@
   </div>
 
   <script>
-    // Telegram WebApp инициализация
     const WebApp = window.Telegram.WebApp;
     WebApp.ready();
     WebApp.expand();
     WebApp.BackButton.show();
 
-    // Основные переменные
     let playerHP = 10;
     let computerHP = 10;
     let round = 1;
@@ -195,7 +193,7 @@
       const resultText = document.getElementById('resultText');
       const okBtn = document.getElementById('okBtn');
 
-      if (playerHP <= 0 || computerHP <= 0) return;
+      if (playerHP <= 0 && computerHP <= 0) return;
 
       const playerBlock = getChoice('block');
       const playerAttack = getChoice('attack');
@@ -208,49 +206,51 @@
       const computerBlock = randomChoice(['head', 'body', 'none']);
       const computerAttack = randomChoice(['head', 'body']);
 
-      // Расчёт урона
       let playerDmg = calcDamage(playerAttack, playerBlock, computerBlock, playerAttackDebuff);
       let computerDmg = calcDamage(computerAttack, computerBlock, playerBlock, computerAttackDebuff);
 
       if (playerHP === 1) playerDmg += 1;
+      if (computerHP === 1) computerDmg += 1;
 
-      // Шанс нокаута
       let isPlayerKO = false, isComputerKO = false;
 
-      if (playerAttack === 'head' && computerBlock === 'none' && Math.random() < 0.3) {
+      // Проверка на двойной нокаут (5% шанс)
+      if (
+        playerAttack === 'head' &&
+        computerAttack === 'head' &&
+        computerBlock === 'none' &&
+        playerBlock === 'none' &&
+        Math.random() < 0.05
+      ) {
         playerDmg = computerHP;
-        computerHP = 0;
-        isPlayerKO = true;
-      } else if (computerAttack === 'head' && playerBlock === 'none' && Math.random() < 0.3) {
         computerDmg = playerHP;
-        playerHP = 0;
+        isPlayerKO = true;
         isComputerKO = true;
+      } else {
+        // Обычные нокауты
+        if (playerAttack === 'head' && computerBlock === 'none' && Math.random() < 0.3) {
+          playerDmg = computerHP;
+          computerHP = 0;
+          isPlayerKO = true;
+        } else if (computerAttack === 'head' && playerBlock === 'none' && Math.random() < 0.3) {
+          computerDmg = playerHP;
+          playerHP = 0;
+          isComputerKO = true;
+        }
       }
 
-      // Применение урона
       if (playerHP > 0) playerHP = Math.max(0, playerHP - computerDmg);
       if (computerHP > 0) computerHP = Math.max(0, computerHP - playerDmg);
 
-      // Дебаффы
-      computerAttackDebuff = 0;
-      playerAttackDebuff = 0;
+      computerAttackDebuff = playerAttack === 'body' ? 1 : 0;
+      playerAttackDebuff = computerAttack === 'body' ? 1 : 0;
 
-      if (playerAttack === 'body' && playerDmg > 0) {
-        computerAttackDebuff = 1;
-      }
-
-      if (computerAttack === 'body' && computerDmg > 0) {
-        playerAttackDebuff = 1;
-      }
-
-      // Эпитеты
       const epithetPlayer = playerDmg > 0 ? randomChoice(epithets) : randomChoice(funnyEpithets);
       const epithetComp = computerDmg > 0 ? randomChoice(epithets) : randomChoice(funnyEpithets);
 
       let playerAttackLog = `Игрок ${epithetPlayer} ударил компьютер в ${playerAttack === 'head' ? 'голову' : 'живот'} нанеся ${playerDmg} урона.`;
       let computerAttackLog = `Компьютер ${epithetComp} ударил игрока в ${computerAttack === 'head' ? 'голову' : 'живот'} нанеся ${computerDmg} урона.`;
 
-      // "И выбил дух!" только при ударе в живот и уроне > 0
       if (playerDmg > 0 && playerAttack === 'body') playerAttackLog += ' И выбил дух!';
       if (computerDmg > 0 && computerAttack === 'body') computerAttackLog += ' И выбил дух!';
 
@@ -261,18 +261,23 @@
 
       let finalHitLog = "";
 
-      if (playerHP <= 0 || computerHP <= 0) {
+      if (isPlayerKO && isComputerKO) {
+        finalHitLog = `НИЧЕГО СЕБЕ! ОНИ ДРУГ ДРУГА ВЫРУБИЛИ!\n💥💥 Оба участника вырубили друг друга в одном раунде!`;
+        out += `\n💥💥 Оба участника вырубили друг друга в одном раунде!`;
+        logEl.innerText = out;
+        gameOverEl.style.display = 'flex';
+        resultText.innerHTML = finalHitLog;
+      } else if (playerHP <= 0 || computerHP <= 0) {
         if (isPlayerKO) {
-          finalHitLog = `💥⚡ УДАР ГРОМА 🎯⚡💥\nИгрок БЕЗУМНО ударил в голову и нанёс нокаут!\n`;
+          finalHitLog = `💥⚡ УДАР ГРОМА 🎯⚡💥\nИгрок БЕЗУМНО ударил в голову и нанёс нокаут!`;
         } else if (isComputerKO) {
-          finalHitLog = `💥⚡ КОМПЬЮТЕР ПАЛ 🎯⚡💥\nКомпьютер БЕЗУМНО ударил в голову и нанёс нокаут!\n`;
+          finalHitLog = `💥⚡ КОМПЬЮТЕР ПАЛ 🎯⚡💥\nКомпьютер БЕЗУМНО ударил в голову и нанёс нокаут!`;
         } else {
           finalHitLog = playerHP <= 0 ? computerAttackLog : playerAttackLog;
         }
 
         out += `\n🏁 Победил: ${playerHP > 0 ? 'Игрок' : 'Компьютер'}!`;
         logEl.innerText = out;
-
         gameOverEl.style.display = 'flex';
         resultText.innerHTML = `🏁 Победил: ${playerHP > 0 ? 'Игрок' : 'Компьютер'}!<br><small>${finalHitLog}</small>`;
       } else {
